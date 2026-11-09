@@ -1,5 +1,0 @@
-[core]
-    remote = storage_remote
-    autostage = true
-['remote "storage_remote"']
-    url = s3://multimodal-automl-dvc-store/datasets
