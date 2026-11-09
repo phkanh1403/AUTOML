@@ -1,5 +1,0 @@
-sensor_id,temp_c,humidity_pct,vibration_hz,target_label
-1,25.4,60.2,12.1,0
-2,26.1,59.8,12.5,
-3,35.8,45.0,45.2,1
-4,24.9,61.0,11.8,
