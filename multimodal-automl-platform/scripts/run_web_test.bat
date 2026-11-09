@@ -1,0 +1,3 @@
+@echo off
+echo Dang mo giao dien kiem thu 5 giai doan (test_system.html)...
+start "" "%~dp0..\web-ui\test_system.html"

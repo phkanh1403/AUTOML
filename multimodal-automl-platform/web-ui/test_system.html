@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Kiem thu He thong AutoML Da phuong thuc (5 Giai doan)</title>
+    <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Nen tang AutoML Da phuong thuc - Bang Dieu khien & Kiem thu 5 Giai doan</h1>
+        <p>Kiem dinh tu dong rang buoc Du lieu dau vao (GD 1) &rarr; Tien xu ly chuyen biet (GD 2) &rarr; Dieu phoi bat dong bo (GD 3) &rarr; Huan luyen phan tan & MLflow (GD 4) &rarr; Bien dich ONNX/TensorRT & XAI (GD 5)</p>
+    </div>
+    <div class="grid-layout">
+        <div class="card">
+            <span class="stage-badge">GIAI DOAN 1, 2 & 3: KIEM THU RANG BUOC DAU VAO & TIEN XU LY</span>
+            <h3>1. Kich ban Kiem thu Du lieu Anh (JPEG/PNG, &ge; 224x224, &ge; 120 anh)</h3>
+            <button onclick="runScenario('valid_image_natural')">Chay Anh Hop le (120 anh 224x224 - Mien Tu nhien CLAHE)</button>
+            <button onclick="runScenario('valid_image_motion')">Chay Anh Hop le (Mien Chuyen dong Letterbox 114,114,114)</button>
+            <button onclick="runScenario('valid_image_biomedical')">Chay Anh Hop le (Mien Y sinh ECG Otsu + Closing)</button>
+            <button class="danger" onclick="runScenario('invalid_image_count')">Test Loi: Duoi 120 anh (Bi tu choi)</button>
+            <button class="danger" onclick="runScenario('invalid_image_res')">Test Loi: Kich thuoc 128x128 &lt; 224x224 (Bi tu choi)</button>
+            <h3>2. Kich ban Kiem thu Du lieu Bang (CSV/JSON)</h3>
+            <button onclick="runScenario('valid_tabular_50nan')">Chay Bang Hop le (Tu dong cat cot &ge; 50% NaN + Impute + Winsorize)</button>
+            <button class="danger" onclick="runScenario('invalid_tabular_target')">Test Loi: Khuyet Nhan Muc tieu (Tu choi ngay tu dau)</button>
+            <h3>Nhat ky Phan hoi tu API Gateway & Orchestrator:</h3>
+            <pre id="pipeline-log">Chua co tac vu nao duoc kich hoat...</pre>
+        </div>
+        <div class="card">
+            <span class="stage-badge">GIAI DOAN 4, 5 & OUTPUT: KET QUA TOAN TRINH TREN WEB</span>
+            <h3>4 Khoi Output Chuan hoa tu Kien truc He thong</h3>
+            <div class="outputs-grid">
+                <div class="output-box">
+                    <h4>OUTPUT 1: Dataset da xu ly</h4>
+                    <div id="out-dataset">Dang cho...</div>
+                </div>
+                <div class="output-box">
+                    <h4>OUTPUT 2: Mo hinh (.pt, .onnx, .trt)</h4>
+                    <div id="out-model">Dang cho...</div>
+                </div>
+                <div class="output-box">
+                    <h4>OUTPUT 3: Lich su Training (MLflow)</h4>
+                    <div id="out-history">Dang cho...</div>
+                </div>
+                <div class="output-box">
+                    <h4>OUTPUT 4: Giai thich Mo hinh (Grad-CAM / SHAP)</h4>
+                    <div id="out-xai">Dang cho...</div>
+                </div>
+            </div>
+            <h3 style="margin-top: 24px;">Tro ly Ao RAG Phan tich Nhat ky Huan luyen</h3>
+            <input id="rag-input" type="text" value="Danh gia do chinh xac va toc do hoi tu cua mo hinh vua huan luyen?" style="width: 72%; padding: 9px; border-radius: 6px; border: 1px solid #334155; background: #020617; color: white;">
+            <button onclick="window.RAGWidget.askQuestion()">Truy van RAG</button>
+            <pre id="rag-response">Hay chay mot pipeline hop le truoc khi dat cau hoi cho RAG Assistant.</pre>
+        </div>
+    </div>
+    <script src="components/stage_tester.js"></script>
+    <script src="components/output_renderer.js"></script>
+    <script src="components/rag_widget.js"></script>
+    <script src="assets/api_client.js"></script>
+    <script>
+        async function runScenario(type) {
+            let payload = {};
+            if (type === 'valid_image_natural') {
+                payload = { modality: 'image', domain: 'natural', mode: 'auto', dataPayload: window.StageTester.generateImageBatch(120, 224, 224) };
+            } else if (type === 'valid_image_motion') {
+                payload = { modality: 'image', domain: 'motion', mode: 'auto', dataPayload: window.StageTester.generateImageBatch(125, 320, 240) };
+            } else if (type === 'valid_image_biomedical') {
+                payload = { modality: 'image', domain: 'biomedical', mode: 'custom', dataPayload: window.StageTester.generateImageBatch(130, 256, 256) };
+            } else if (type === 'invalid_image_count') {
+                payload = { modality: 'image', domain: 'natural', dataPayload: window.StageTester.generateImageBatch(45, 224, 224) };
+            } else if (type === 'invalid_image_res') {
+                payload = { modality: 'image', domain: 'natural', dataPayload: window.StageTester.generateImageBatch(120, 128, 128) };
+            } else if (type === 'valid_tabular_50nan') {
+                payload = { modality: 'tabular', targetColumn: 'target_label', dataPayload: window.StageTester.getValidTabular50PctNaN() };
+            } else if (type === 'invalid_tabular_target') {
+                payload = { modality: 'tabular', targetColumn: 'target_label', dataPayload: window.StageTester.getInvalidMissingTargetTabular() };
+            }
+            const res = await window.AutoMLApiClient.submitToGateway(payload);
+            window.OutputRenderer.render(res);
+        }
+    </script>
+</body>
+</html>

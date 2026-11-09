@@ -1,0 +1,74 @@
+:root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: #334155;
+    --accent: #38bdf8;
+    --danger: #ef4444;
+    --text: #f8fafc;
+}
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 24px;
+}
+.header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+}
+.grid-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+}
+.stage-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    background: #0284c7;
+    margin-bottom: 8px;
+}
+button {
+    background: var(--accent);
+    color: #0f172a;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 4px 4px 4px 0;
+}
+button.danger {
+    background: var(--danger);
+    color: white;
+}
+pre {
+    background: #020617;
+    padding: 12px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    border: 1px solid var(--border);
+}
+.outputs-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+}
+.output-box {
+    background: #0f172a;
+    border: 1px solid var(--border);
+    padding: 12px;
+    border-radius: 8px;
+}
