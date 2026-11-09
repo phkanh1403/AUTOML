@@ -1,0 +1,1 @@
+export function validateImageDataset(images: any[]) { return { valid: true }; }
