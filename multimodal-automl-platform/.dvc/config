@@ -1,3 +1,0 @@
-[core]
-    remote = storage_remote
-    autostage = true
