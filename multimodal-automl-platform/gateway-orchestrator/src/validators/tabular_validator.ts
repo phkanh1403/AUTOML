@@ -1,1 +1,0 @@
-export function validateTabularDataset(rows: any[], target: string) { return { valid: true, droppedColumns: [], cleanedRows: rows }; }
