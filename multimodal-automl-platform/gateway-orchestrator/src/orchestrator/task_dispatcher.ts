@@ -1,0 +1,1 @@
+export class TaskDispatcher { async dispatchPipeline(req: any) { return { jobId: 'mock_123', outputs: {} }; } }
