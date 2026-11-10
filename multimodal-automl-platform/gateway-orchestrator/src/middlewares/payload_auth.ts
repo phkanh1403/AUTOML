@@ -1,0 +1,1 @@
+export function payloadAuthMiddleware(req:any, res:any, next:any) { next(); }
