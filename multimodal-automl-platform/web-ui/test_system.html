@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Multimodal AutoML - V11 Clean & Stable</title>
+    <link rel="stylesheet" href="assets/styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h1>Nền tảng AutoML: Luồng Đào tạo & Suy luận Thực tế</h1>
+    </div>
+
+    <div class="tabs">
+        <button id="btn-tab-train" class="tab-btn active" onclick="switchTab('train')">1. Huấn luyện Mô hình (Training)</button>
+        <button id="btn-tab-predict" class="tab-btn" onclick="switchTab('predict')">2. Quản lý & Test Suy luận (Prediction)</button>
+    </div>
+
+    <!-- TAB 1: TRAINING PIPELINE -->
+    <div id="tab-train" class="tab-content active">
+        <div class="grid-layout">
+            <div class="card">
+                <span class="stage-badge">GIAI ĐOẠN 1 & 2: NHẬP LIỆU & CẤU HÌNH</span>
+                
+                <div class="form-group">
+                    <label>Loại dữ liệu (Modality)</label>
+                    <select id="modality" onchange="toggleForm()">
+                        <option value="tabular">Dữ liệu Bảng (Dự đoán số liệu/Phân loại CSV)</option>
+                        <option value="image">Thị giác máy tính (Nhận diện Ảnh)</option>
+                    </select>
+                </div>
+
+                <div id="image-config" style="display: none;">
+                    <div class="form-group">
+                        <label>Nhãn cần nhận diện (Target Label)</label>
+                        <p style="font-size:12px; color:#94a3b8; margin-top:-5px;">Nhập 1 nhãn ĐÚNG duy nhất (Ví dụ: Cây bị bệnh đốm lá). Các kết quả không đạt ngưỡng sẽ là "Khác".</p>
+                        <input type="text" id="image-labels" placeholder="Ví dụ: Cây bị bệnh đốm lá">
+                    </div>
+                    <div class="form-group">
+                        <label>Tải lên tập dữ liệu Ảnh (.ZIP)</label>
+                        <p style="font-size:12px; color:#94a3b8; margin-top:-5px;">Yêu cầu nén file ZIP chứa tối thiểu 120 ảnh (JPEG/PNG).</p>
+                        <input type="file" id="image-upload" accept=".zip">
+                    </div>
+                </div>
+
+                <div id="tabular-config">
+                    <div class="form-group">
+                        <label>Trường mục tiêu cần dự đoán (Target Column)</label>
+                        <input type="text" id="target-col" value="target_label">
+                    </div>
+                    <div class="form-group">
+                        <label>Tải lên tập dữ liệu Bảng (.CSV)</label>
+                        <input type="file" id="csv-upload" accept=".csv">
+                    </div>
+                </div>
+
+                <button onclick="submitPipeline()">🚀 Bắt đầu Huấn luyện AI</button>
+                <pre id="pipeline-log" style="margin-top:20px;">Trạng thái: Đang chờ dữ liệu...</pre>
+            </div>
+
+            <div class="card">
+                <span class="stage-badge">GIAI ĐOẠN 4 & 5: KẾT QUẢ ĐẦU RA (OUTPUT)</span>
+                <div class="outputs-grid">
+                    <div class="output-box"><h4>OUTPUT 1: Dataset</h4><div id="out-dataset">Trống</div></div>
+                    <div class="output-box"><h4>OUTPUT 2: Mô hình</h4><div id="out-model">Trống</div></div>
+                    <div class="output-box"><h4>OUTPUT 3: Lịch sử</h4><div id="out-history">Trống</div></div>
+                    <div class="output-box"><h4>OUTPUT 4: Giải thích Mô hình</h4><div id="out-xai" style="padding-bottom: 5px;">Trống</div></div>
+                </div>
+                
+                <div id="test-predict-prompt" style="display:none; margin-top:20px; text-align:center; padding: 15px; background: #020617; border: 1px dashed #38bdf8; border-radius: 8px;">
+                    <button class="outline" onclick="switchTab('predict')">Chuyển sang Tab 2 để Test Dự đoán ngay ➡️</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: PREDICTION & MANAGER -->
+    <div id="tab-predict" class="tab-content">
+        <div class="grid-layout">
+            <div class="card">
+                <span class="stage-badge">QUẢN LÝ MÔ HÌNH ĐÃ TRAIN</span>
+                <button class="danger clear-all-btn" onclick="window.ModelManager.deleteAll()" style="padding: 4px 10px; font-size: 12px; margin-top: -5px;">🗑️ Xóa tất cả</button>
+                <p style="font-size:13px; color:#cbd5e1; margin-top: 10px;">Lịch sử mô hình được lưu tự động. Bạn có thể chọn lại để kiểm thử hoặc xóa.</p>
+                <div id="model-history-list" style="margin-top: 15px; max-height: 400px; overflow-y:auto; padding-right: 5px;">
+                    <p style="color:#94a3b8">Chưa có mô hình nào.</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <span class="stage-badge">GIAO DIỆN KIỂM THỬ SUY LUẬN</span>
+                <div id="predict-model-status" style="padding: 12px; background: #020617; border-radius: 6px; margin-bottom: 20px; font-weight: 600;">❌ Chưa có mô hình.</div>
+
+                <div id="predict-image-form" style="display: none;">
+                    <p id="dynamic-image-instruction" style="margin-bottom:15px; padding:10px; background:#0f172a; border-radius:6px; border:1px solid #334155; font-size:14px;"></p>
+                    <div class="form-group">
+                        <label>Tải lên 1 Ảnh để test khả năng nhận diện:</label>
+                        <input type="file" id="predict-img" accept="image/jpeg, image/png">
+                    </div>
+                    <button onclick="runPrediction('image')">🔍 Thực thi Dự đoán</button>
+                </div>
+
+                <div id="predict-tabular-form" style="display: none;">
+                    <div class="form-group">
+                        <label>Nhập Đặc trưng (Feature Vector):</label>
+                        <p id="dynamic-tabular-instruction" style="font-size:13px; color:#cbd5e1; margin-top:-5px; margin-bottom:10px; padding:10px; background:#0f172a; border-radius:6px; border:1px solid #334155;"></p>
+                        <input type="text" id="predict-features">
+                    </div>
+                    <button onclick="runPrediction('tabular')">📈 Thực thi Dự đoán</button>
+                </div>
+
+                <div id="predict-result-box" class="predict-result">
+                    <strong>KẾT QUẢ SUY LUẬN TỪ EDGE CORE:</strong><br>
+                    <span id="predict-output" style="font-size: 18px; display:block; margin-top:10px;">Đang chờ...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="components/stage_tester.js"></script>
+    <script src="components/output_renderer.js"></script>
+    <script src="assets/api_client.js"></script>
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            document.getElementById('btn-tab-' + tabId).classList.add('active');
+        }
+
+        function toggleForm() {
+            const mod = document.getElementById('modality').value;
+            document.getElementById('image-config').style.display = (mod === 'image') ? 'block' : 'none';
+            document.getElementById('tabular-config').style.display = (mod === 'tabular') ? 'block' : 'none';
+        }
+
+        async function submitPipeline() {
+            try {
+                const modality = document.getElementById('modality').value;
+                const log = document.getElementById('pipeline-log');
+                log.textContent = "Đang phân tích file của bạn...";
+                
+                let payload = { modality, mode: 'auto' };
+
+                if (modality === 'image') {
+                    const labelsRaw = document.getElementById('image-labels').value;
+                    const labels = labelsRaw.split(',').map(s => s.trim()).filter(s => s);
+                    if (labels.length === 0) { alert("Vui lòng nhập nhãn mục tiêu (VD: Cây khỏe mạnh)!"); return; }
+                    
+                    const files = document.getElementById('image-upload').files;
+                    if (files.length === 0) { alert("Vui lòng tải lên file ZIP chứa ảnh!"); return; }
+                    
+                    payload.labels = [labels[0]]; 
+                    payload.dataPayload = await window.StageTester.parseUploadedZip(files[0]);
+                } else {
+                    payload.targetColumn = document.getElementById('target-col').value || 'target_label';
+                    const file = document.getElementById('csv-upload').files[0];
+                    if (!file) { alert("Thiếu file CSV!"); return; }
+                    
+                    const csvRes = await window.StageTester.parseUploadedCSV(file);
+                    if (!csvRes) { alert("Lỗi đọc CSV"); return; }
+                    payload.dataPayload = csvRes.payload;
+                    payload.features = csvRes.headers.filter(h => h !== payload.targetColumn);
+                    payload.rawText = csvRes.rawText;
+                }
+                
+                log.textContent = "Đang xác thực (Validation) & Điều phối (Orchestration) hệ thống...";
+                const res = await window.AutoMLApiClient.submitToGateway(payload);
+                res.modality = modality;
+                window.OutputRenderer.render(res);
+            } catch (err) {
+                console.error(err);
+                document.getElementById('pipeline-log').innerHTML = `<span style="color:#ef4444; font-weight:bold;">❌ LỖI HỆ THỐNG:</span>\n${err.message}`;
+            }
+        }
+
+        async function runPrediction(modality) {
+            const resultBox = document.getElementById('predict-result-box');
+            const outputText = document.getElementById('predict-output');
+            resultBox.style.display = 'block';
+            resultBox.className = 'predict-result';
+            outputText.innerHTML = "<i>Đang xử lý suy luận...</i>";
+
+            let reqPayload = { modality, inputs: {} };
+            
+            if(modality === 'image') {
+                if(!document.getElementById('predict-img').files[0]) { alert("Thiếu ảnh test!"); return; }
+                reqPayload.inputs = { filename: document.getElementById('predict-img').files[0].name };
+                reqPayload.labels = window.ModelManager.currentModel.labels; 
+            } else {
+                const vals = document.getElementById('predict-features').value;
+                if(!vals) { alert("Nhập vector đặc trưng!"); return; }
+                
+                reqPayload.tabularTargetType = window.ModelManager.currentModel.tabularTargetType;
+                reqPayload.tabularTargetLabels = window.ModelManager.currentModel.tabularTargetLabels;
+                reqPayload.inputs = { 
+                    features: vals.split(',').map(v => {
+                        const trimmed = v.trim();
+                        return isNaN(trimmed) ? trimmed : Number(trimmed);
+                    })
+                };
+            }
+
+            const res = await window.AutoMLApiClient.predict(reqPayload);
+            if(res.status === 'SUCCESS') {
+                outputText.innerHTML = `<span style="color:#34d399">Dự đoán:</span> <b>${res.prediction.class || res.prediction.target_value}</b><br>` + 
+                                       `<span style="color:#94a3b8; font-size:14px;">Mức độ/Tỷ lệ tin cậy: ${res.prediction.confidence || res.prediction.risk_level}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
