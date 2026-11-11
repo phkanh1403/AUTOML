@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multimodal AutoML Platform</title>
+    <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+    <header class="header">
+        <div>
+            <p class="eyebrow">LOCAL MACHINE LEARNING WORKBENCH</p>
+            <h1>Multimodal AutoML Platform</h1>
+            <p class="header-subtitle">Automated preprocessing, model selection, evaluation, and inference for tabular and image data.</p>
+        </div>
+        <span id="backend-status" class="status-pill">Checking backend…</span>
+    </header>
+
+    <nav class="tabs" aria-label="Primary navigation">
+        <button id="btn-tab-train" class="tab-btn active" onclick="switchTab('train')">1. Train Models</button>
+        <button id="btn-tab-predict" class="tab-btn" onclick="switchTab('predict')">2. Model Registry & Prediction</button>
+    </nav>
+
+    <main>
+        <section id="tab-train" class="tab-content active">
+            <div class="grid-layout">
+                <article class="card">
+                    <span class="stage-badge">STAGES 1–2 · DATA & CONFIGURATION</span>
+                    <div class="form-group">
+                        <label for="modality">Data Modality</label>
+                        <select id="modality" onchange="toggleForm()">
+                            <option value="tabular">Tabular Data (CSV)</option>
+                            <option value="image">Image Classification (ZIP)</option>
+                        </select>
+                    </div>
+
+                    <div id="tabular-config">
+                        <div class="form-group">
+                            <label for="target-col">Target Column</label>
+                            <input type="text" id="target-col" value="target_label" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="task-type">Task Type</label>
+                            <select id="task-type">
+                                <option value="auto">Automatic Detection (Auto)</option>
+                                <option value="classification">Classification</option>
+                                <option value="regression">Regression</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="csv-upload">Tabular Dataset (.CSV)</label>
+                            <input type="file" id="csv-upload" accept=".csv,text/csv">
+                            <small>The backend reads the CSV directly; JavaScript does not parse the dataset. At least 12 labeled rows are recommended.</small>
+                        </div>
+                    </div>
+
+                    <div id="image-config" style="display:none">
+                        <div class="notice">
+                            <b>Folder names inside the ZIP are used as class labels (no manual label entry is required):</b>
+                            <pre>dataset.zip
+├── Apple/
+│   ├── image_001.jpg
+│   ├── image_002.jpg
+│   └── ... (at least 100 images)
+└── Banana/
+    ├── image_001.jpg
+    ├── image_002.jpg
+    └── ... (at least 100 images)</pre>
+                            An optional wrapper folder is supported (for example, dataset/Apple/...). Each class folder must contain at least 100 valid, unique JPEG/PNG images. Use one folder for one-class novelty detection, or multiple folders for multiclass classification. The highest confidence must be greater than 64% to return a class label; otherwise, the result is Other.
+                        </div>
+                        <div class="form-group">
+                            <label for="image-upload">Folder-Labeled Image Dataset (.ZIP)</label>
+                            <input type="file" id="image-upload" accept=".zip,application/zip">
+                            <small>Labels are inferred from class folder names; no manual labels are required.</small>
+                        </div>
+                    </div>
+
+                    <button id="train-btn" onclick="submitPipeline()">🚀 Start AutoML Training</button>
+                    <pre id="pipeline-log" class="pipeline-log">Status: Waiting for input…</pre>
+                </article>
+
+                <article class="card">
+                    <span class="stage-badge">STAGES 3–5 · OUTPUT & EXPLAINABILITY</span>
+                    <div class="outputs-grid">
+                        <section class="output-box"><h2>OUTPUT 1 · Dataset</h2><div id="out-dataset">No results yet</div></section>
+                        <section class="output-box"><h2>OUTPUT 2 · Model</h2><div id="out-model">No results yet</div></section>
+                        <section class="output-box"><h2>OUTPUT 3 · Evaluation</h2><div id="out-history">No results yet</div></section>
+                        <section class="output-box"><h2>OUTPUT 4 · XAI</h2><div id="out-xai">No results yet</div></section>
+                    </div>
+                    <div id="test-predict-prompt" class="next-step" style="display:none">
+                        <p>The trained model has been saved as a backend artifact and remains available after the page is refreshed or the server is restarted.</p>
+                        <button class="outline" onclick="switchTab('predict')">Go to Inference Testing →</button>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section id="tab-predict" class="tab-content">
+            <div class="grid-layout">
+                <article class="card">
+                    <div class="section-heading">
+                        <span class="stage-badge">MODEL REGISTRY</span>
+                        <button class="danger compact" onclick="window.ModelManager.deleteAll()">Delete All</button>
+                    </div>
+                    <p class="muted">Every successful training run saves a named model artifact such as <code>apple-image-1.joblib</code> or <code>gender-tabular-2.joblib</code> under <code>data/models/&lt;job_id&gt;/</code>. Image names use class-folder labels joined with <code>&amp;</code>; tabular names use the selected target column. A global sequence is shared across both types and is not reset when models are deleted. The registry is read from backend storage, not browser localStorage. Deleting a model removes its model file, metadata, and associated dataset artifacts from disk.</p>
+                    <div id="model-history-list" class="model-history-list">Loading model registry…</div>
+                </article>
+
+                <article class="card">
+                    <span class="stage-badge">INFERENCE TESTER</span>
+                    <div id="predict-model-status" class="model-status">No model selected.</div>
+
+                    <div id="predict-image-form" style="display:none">
+                        <p id="dynamic-image-instruction" class="instruction"></p>
+                        <div class="form-group">
+                            <label for="predict-img">Input Image (JPEG/PNG)</label>
+                            <input type="file" id="predict-img" accept="image/jpeg,image/png,.jpg,.jpeg,.png">
+                        </div>
+                        <button id="predict-image-btn" onclick="runPrediction('image')">🔍 Predict from Image</button>
+                    </div>
+
+                    <div id="predict-tabular-form" style="display:none">
+                        <div class="form-group">
+                            <label for="predict-features">Feature Vector</label>
+                            <p id="dynamic-tabular-instruction" class="instruction"></p>
+                            <textarea id="predict-features" rows="4" placeholder='Example: [12.5, "category A", 4] or {"feature_a": 12.5}'></textarea>
+                            <small>Enter a JSON array in the exact feature order, or a JSON object using column names. Use null or an empty string for missing values.</small>
+                        </div>
+                        <button id="predict-tabular-btn" onclick="runPrediction('tabular')">📈 Predict from Tabular Data</button>
+                    </div>
+
+                    <div id="predict-result-box" class="predict-result" aria-live="polite">
+                        <strong>INFERENCE RESULT</strong>
+                        <div id="predict-output" class="predict-output">Waiting for input…</div>
+                    </div>
+                </article>
+            </div>
+        </section>
+    </main>
+
+    <script src="assets/api_client.js"></script>
+    <script src="components/output_renderer.js"></script>
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            document.getElementById('btn-tab-' + tabId).classList.add('active');
+        }
+
+        function toggleForm() {
+            const modality = document.getElementById('modality').value;
+            document.getElementById('image-config').style.display = modality === 'image' ? 'block' : 'none';
+            document.getElementById('tabular-config').style.display = modality === 'tabular' ? 'block' : 'none';
+        }
+
+        function setButtonBusy(buttonId, busy, busyText) {
+            const button = document.getElementById(buttonId);
+            if (!button) return;
+            if (busy) {
+                button.dataset.originalText = button.textContent;
+                button.textContent = busyText;
+                button.disabled = true;
+            } else {
+                button.textContent = button.dataset.originalText || button.textContent;
+                button.disabled = false;
+            }
+        }
+
+        async function submitPipeline() {
+            const modality = document.getElementById('modality').value;
+            const log = document.getElementById('pipeline-log');
+            let file;
+            const payload = { modality };
+            if (modality === 'image') {
+                file = document.getElementById('image-upload').files[0];
+                if (!file) { alert('Upload a ZIP archive containing at least one class folder, with at least 100 valid JPEG/PNG images in each folder.'); return; }
+            } else {
+                file = document.getElementById('csv-upload').files[0];
+                payload.targetColumn = document.getElementById('target-col').value.trim() || 'target_label';
+                payload.taskType = document.getElementById('task-type').value;
+                if (!file) { alert('Upload a CSV file.'); return; }
+            }
+            payload.file = file;
+            setButtonBusy('train-btn', true, 'Training…');
+            log.textContent = 'Uploading data to the backend, validating the dataset, and running AutoML…';
+            try {
+                const response = await window.AutoMLApiClient.submitToGateway(payload);
+                window.OutputRenderer.render({ ...response, modality });
+            } catch (error) {
+                log.textContent = `BACKEND CONNECTION ERROR\n${error.message}`;
+            } finally {
+                setButtonBusy('train-btn', false);
+            }
+        }
+
+        function parseFeatureVector(raw) {
+            const trimmed = raw.trim();
+            if (!trimmed) throw new Error('Enter a feature vector.');
+            try {
+                return JSON.parse(trimmed);
+            } catch (_) {
+                return trimmed.split(',').map(value => {
+                    const item = value.trim();
+                    if (!item) return null;
+                    const numeric = Number(item);
+                    return Number.isFinite(numeric) ? numeric : item;
+                });
+            }
+        }
+
+        async function runPrediction(modality) {
+            const model = window.ModelManager.currentModel;
+            if (!model) { alert('No model selected.'); return; }
+            const buttonId = modality === 'image' ? 'predict-image-btn' : 'predict-tabular-btn';
+            const resultBox = document.getElementById('predict-result-box');
+            const output = document.getElementById('predict-output');
+            resultBox.style.display = 'block';
+            resultBox.classList.remove('error');
+            output.textContent = 'Running inference with the saved model…';
+            setButtonBusy(buttonId, true, 'Predicting…');
+            try {
+                let response;
+                if (modality === 'image') {
+                    const file = document.getElementById('predict-img').files[0];
+                    if (!file) throw new Error('Select an input image.');
+                    response = await window.AutoMLApiClient.predictImage(model.jobId, file);
+                } else {
+                    const features = parseFeatureVector(document.getElementById('predict-features').value);
+                    response = await window.AutoMLApiClient.predictTabular({
+                        model_id: model.jobId,
+                        inputs: { features }
+                    });
+                }
+                if (response.status !== 'SUCCESS') throw new Error(response.reason || 'The backend could not generate a prediction.');
+                const prediction = response.prediction || {};
+                if (prediction.class !== undefined) {
+                    const confidence = Number.isFinite(Number(prediction.confidence))
+                        ? `${(Number(prediction.confidence) * 100).toFixed(2)}%` : 'N/A';
+                    output.textContent = prediction.class === 'Other'
+                        ? `Result: Other (no class exceeded the confidence threshold)\nTop candidate: ${prediction.candidate_class || 'N/A'}\nConfidence: ${confidence}\nRequired threshold: > ${((prediction.confidence_threshold ?? 0.64) * 100).toFixed(0)}%`
+                        : `Predicted class: ${prediction.class}\nConfidence: ${confidence}\nRequired threshold: > ${((prediction.confidence_threshold ?? 0.64) * 100).toFixed(0)}%`;
+                    const probabilities = Object.entries(prediction.probabilities || {}).sort((a, b) => b[1] - a[1]);
+                    if (probabilities.length) {
+                        const breakdown = probabilities.map(([name, value]) => `${name}: ${(value * 100).toFixed(2)}%`).join('\n');
+                        const detailTitle = prediction.confidence_type === 'novelty_score'
+                            ? 'Estimated novelty score:' : 'Class probabilities:';
+                        output.textContent += `\n\n${detailTitle}\n${breakdown}`;
+                    }
+                } else {
+                    output.textContent = `Predicted value: ${Number(prediction.target_value).toFixed(6)}`;
+                }
+            } catch (error) {
+                resultBox.classList.add('error');
+                output.textContent = `Prediction failed: ${error.message}`;
+            } finally {
+                setButtonBusy(buttonId, false);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            toggleForm();
+            try {
+                const result = await window.AutoMLApiClient.health();
+                const status = document.getElementById('backend-status');
+                status.textContent = result.status === 'ok' ? 'Backend online · v' + result.version : 'Backend error';
+                status.classList.toggle('offline', result.status !== 'ok');
+            } catch (_) {
+                const status = document.getElementById('backend-status');
+                status.textContent = 'Backend offline';
+                status.classList.add('offline');
+            }
+        });
+    </script>
+</body>
+</html>
